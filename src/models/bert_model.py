@@ -5,7 +5,8 @@ Fine-tuned BERT for sentiment analysis
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-from transformers import BertModel, BertTokenizer, AdamW, get_linear_schedule_with_warmup
+from torch.optim import AdamW
+from transformers import BertModel, BertTokenizer, get_linear_schedule_with_warmup
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
