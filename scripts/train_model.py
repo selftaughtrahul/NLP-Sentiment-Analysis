@@ -82,9 +82,7 @@ def train_bert_model(train_df, val_df, test_df):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, default='all',
-                       choices=['all', 'traditional', 'bert'],
-                       help='Which models to train')
+    parser.add_argument('--model', type=str, default='all',choices=['all', 'traditional', 'bert'], help='Which models to train')
     args = parser.parse_args()
     
     # Load data

@@ -31,7 +31,6 @@ class LogisticRegressionClassifier:
             C=C,
             max_iter=max_iter,
             solver=solver,
-            multi_class='multinomial',
             random_state=42,
             n_jobs=-1
         )
