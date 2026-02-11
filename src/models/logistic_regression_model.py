@@ -61,12 +61,16 @@ class LogisticRegressionClassifier:
         y_pred = self.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
         
+        report_dict = classification_report(y_test, y_pred, output_dict=True)
+        report_str = classification_report(y_test, y_pred)
+        
         logger.info(f"Logistic Regression Accuracy: {accuracy:.4f}")
-        logger.info("\n" + classification_report(y_test, y_pred))
+        logger.info("\n" + report_str)
         
         return {
             'accuracy': accuracy,
-            'predictions': y_pred
+            'predictions': y_pred,
+            'report': report_dict
         }
     
     def save(self, filepath: Path = None):

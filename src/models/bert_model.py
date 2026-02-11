@@ -10,6 +10,7 @@ from transformers import BertModel, BertTokenizer, get_linear_schedule_with_warm
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
+from sklearn.metrics import classification_report
 from src.utils.config import MODEL_CONFIGS, MODELS_DIR
 from src.utils.logger import setup_logger
 
@@ -207,7 +208,18 @@ class BERTTrainer:
         """Evaluate model"""
         predictions = self.predict(texts)
         accuracy = (predictions == labels).mean()
-        return accuracy
+        
+        report_dict = classification_report(labels, predictions, output_dict=True)
+        report_str = classification_report(labels, predictions)
+        
+        logger.info(f"BERT Accuracy: {accuracy:.4f}")
+        logger.info("\n" + report_str)
+        
+        return {
+            'accuracy': accuracy,
+            'predictions': predictions,
+            'report': report_dict
+        }
     
     def save(self, filepath: Path = None):
         """Save model"""
