@@ -24,7 +24,7 @@ class Tokenizer:
         self.method = method
         
         if method == "bert":
-            self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+            self.bert_tokenizer = BertTokenizer.from_pretrained('distilbert-base-uncased')
     
     def tokenize(self, text: str) -> List[str]:
         """

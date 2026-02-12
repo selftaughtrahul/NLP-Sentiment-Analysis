@@ -11,6 +11,8 @@ from src.preprocessing.pipeline import PreprocessingPipeline
 from src.features.tfidf_vectorizer import TfidfFeatureExtractor
 from src.models.naive_bayes_model import NaiveBayesClassifier
 from src.models.logistic_regression_model import LogisticRegressionClassifier
+from src.models.xgboost_model import XGBoostSentimentClassifier
+from src.models.ensemble_model import EnsembleSentimentClassifier
 from src.models.bert_model import BERTTrainer
 from src.utils.config import MODELS_DIR, ID_TO_LABEL
 from src.utils.logger import setup_logger
@@ -33,6 +35,15 @@ class SentimentPredictor:
         """Load all trained models"""
         logger.info("Loading models...")
         
+        # Helper to safely load a model
+        def load_model(name, loader_func, path):
+            try:
+                if path.exists():
+                    self.models[name] = loader_func(path)
+                    logger.info(f"[OK] Loaded {name} model")
+            except Exception as e:
+                logger.error(f"[FAILED] Could not load {name} model: {e}")
+
         try:
             # Load preprocessing pipeline
             self.preprocessing_pipeline = PreprocessingPipeline(
@@ -44,31 +55,24 @@ class SentimentPredictor:
             # Load TF-IDF vectorizer (for traditional models)
             tfidf_path = MODELS_DIR / "tfidf_vectorizer.pkl"
             if tfidf_path.exists():
-                self.tfidf_vectorizer = TfidfFeatureExtractor.load(tfidf_path)
-                logger.info("[OK] Loaded TF-IDF vectorizer")
+                try:
+                    self.tfidf_vectorizer = TfidfFeatureExtractor.load(tfidf_path)
+                    logger.info("[OK] Loaded TF-IDF vectorizer")
+                except Exception as e:
+                    logger.error(f"[FAILED] Could not load TF-IDF: {e}")
             
-            # Load Naive Bayes
-            nb_path = MODELS_DIR / "naive_bayes_model.pkl"
-            if nb_path.exists():
-                self.models['naive_bayes'] = NaiveBayesClassifier.load(nb_path)
-                logger.info("[OK] Loaded Naive Bayes model")
-            
-            # Load Logistic Regression
-            lr_path = MODELS_DIR / "logistic_regression_model.pkl"
-            if lr_path.exists():
-                self.models['logistic_regression'] = LogisticRegressionClassifier.load(lr_path)
-                logger.info("[OK] Loaded Logistic Regression model")
-            
-            # Load BERT
-            bert_path = MODELS_DIR / "bert_model.pth"
-            if bert_path.exists():
-                self.models['bert'] = BERTTrainer.load(bert_path)
-                logger.info("[OK] Loaded BERT model")
+            # Load Models
+            load_model('naive_bayes', NaiveBayesClassifier.load, MODELS_DIR / "naive_bayes_model.pkl")
+            load_model('logistic_regression', LogisticRegressionClassifier.load, MODELS_DIR / "logistic_regression_model.pkl")
+            load_model('xgboost', XGBoostSentimentClassifier.load, MODELS_DIR / "xgboost_model.pkl")
+            load_model('ensemble', EnsembleSentimentClassifier.load, MODELS_DIR / "ensemble_model.pkl")
+            load_model('bert', BERTTrainer.load, MODELS_DIR / "bert_model.pth")
             
             logger.info(f"Loaded {len(self.models)} models")
             
         except Exception as e:
-            logger.error(f"Error loading models: {e}")
+            logger.error(f"Critical error in _load_models: {e}")
+            # Don't raise, allowing app to start with whatever loaded
             raise
     
     def predict(self, text: str, model_name: str = "bert") -> Dict:
@@ -91,7 +95,8 @@ class SentimentPredictor:
         model = self.models[model_name]
         
         # Preprocess text
-        if model_name in ['naive_bayes', 'logistic_regression']:
+        # Preprocess text
+        if model_name in ['naive_bayes', 'logistic_regression', 'xgboost', 'ensemble']:
             # Traditional models use TF-IDF
             processed_text = self.preprocessing_pipeline.preprocess(text)
             features = self.tfidf_vectorizer.transform([processed_text])

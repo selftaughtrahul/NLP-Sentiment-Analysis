@@ -3,13 +3,21 @@ Script to train sentiment analysis models
 """
 import argparse
 import pandas as pd
+import sys
 from pathlib import Path
+
+# Add apps directory to sys.path
+apps_dir = Path(__file__).resolve().parent.parent
+sys.path.append(str(apps_dir))
+
 from sklearn.model_selection import train_test_split
 
 from src.preprocessing.pipeline import PreprocessingPipeline
 from src.features.tfidf_vectorizer import TfidfFeatureExtractor
 from src.models.naive_bayes_model import NaiveBayesClassifier
 from src.models.logistic_regression_model import LogisticRegressionClassifier
+from src.models.xgboost_model import XGBoostSentimentClassifier
+from src.models.ensemble_model import EnsembleSentimentClassifier
 from src.models.bert_model import BERTTrainer
 from src.utils.config import PROCESSED_DATA_DIR
 import json
@@ -86,6 +94,26 @@ def train_traditional_models(train_df, test_df):
     lr_results = lr.evaluate(X_test, y_test)
     save_evaluation_report("logistic_regression", lr_results, y_test)
     lr.save()
+    
+    # Track trained models for ensemble
+    trained_models = [('naive_bayes', nb), ('logistic_regression', lr)]
+    
+    # Train XGBoost
+    logger.info("\n=== XGBoost ===")
+    xgb = XGBoostSentimentClassifier()
+    xgb.train(X_train, y_train)
+    xgb_results = xgb.evaluate(X_test, y_test)
+    save_evaluation_report("xgboost", xgb_results, y_test)
+    xgb.save()
+    trained_models.append(('xgboost', xgb))
+    
+    # Train Ensemble
+    logger.info("\n=== Ensemble (Voting) ===")
+    ensemble = EnsembleSentimentClassifier(models=trained_models)
+    ensemble.train(X_train, y_train)
+    ensemble_results = ensemble.evaluate(X_test, y_test)
+    save_evaluation_report("ensemble", ensemble_results, y_test)
+    ensemble.save()
 
 
 def train_bert_model(train_df, val_df, test_df):
@@ -115,6 +143,7 @@ def train_bert_model(train_df, val_df, test_df):
 
 
 def main():
+    print("ehllo")
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, default='all',choices=['all', 'traditional', 'bert'], help='Which models to train')
     args = parser.parse_args()

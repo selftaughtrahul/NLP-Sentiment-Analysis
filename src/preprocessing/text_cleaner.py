@@ -142,8 +142,8 @@ class TextCleaner:
         if remove_numbers:
             text = self.number_pattern.sub('', text)
         
-        # Remove special characters (keep letters, numbers, spaces, basic punctuation)
-        text = re.sub(r'[^a-zA-Z0-9\s.,!?]', '', text)
+        # Remove special characters (keep letters, numbers, spaces, basic punctuation, @, #)
+        text = re.sub(r'[^a-zA-Z0-9\s.,!?@#]', '', text)
         
         # Remove extra whitespace
         text = ' '.join(text.split())

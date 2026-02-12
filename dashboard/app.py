@@ -1,13 +1,46 @@
-"""
-Streamlit Dashboard for Sentiment Analysis
-"""
 import streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+import threading
+import uvicorn
+import sys
+import time
+from pathlib import Path
+
+# Add apps directory to sys.path to allow importing src
+apps_dir = Path(__file__).resolve().parent.parent
+if str(apps_dir) not in sys.path:
+    sys.path.append(str(apps_dir))
+
+# Import FastAPI app (must be after sys.path update)
+try:
+    from src.api.main import app as fastapi_app
+except ImportError as e:
+    st.error(f"Failed to import API: {e}")
+    st.stop()
+
+# --- API Background Server ---
+def run_api():
+    """Run FastAPI in a separate thread"""
+    uvicorn.run(fastapi_app, host="0.0.0.0", port=8000, log_level="error")
+
+@st.cache_resource
+def start_api_server():
+    """Start API server in background (singleton)"""
+    thread = threading.Thread(target=run_api, daemon=True)
+    thread.start()
+    # Give it a moment to start
+    time.sleep(2)
+    return thread
+
+# Start API automatically
+try:
+    start_api_server()
+except Exception as e:
+    st.error(f"Failed to start background API: {e}")
 
 # Page config
 st.set_page_config(
@@ -18,7 +51,7 @@ st.set_page_config(
 )
 
 # API endpoint
-API_URL = "http://localhost:8000"
+API_URL = "http://localhost:8001"
 
 # Custom CSS
 st.markdown("""
@@ -46,10 +79,12 @@ st.markdown('<h1 class="main-header">🎭 Sentiment Analysis Dashboard</h1>', un
 with st.sidebar:
     st.header("⚙️ Settings")
     
+    st.success("✅ Prediction API Running")
+    
     # Model selection
     model = st.selectbox(
         "Select Model",
-        ["bert", "logistic_regression", "naive_bayes"],
+        ["bert", "logistic_regression", "naive_bayes", "xgboost", "ensemble"],
         help="Choose the ML model for prediction"
     )
     

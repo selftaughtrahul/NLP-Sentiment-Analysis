@@ -14,7 +14,7 @@ logger = setup_logger(__name__)
 class BERTEmbeddings:
     """Extract BERT embeddings for text"""
     
-    def __init__(self, model_name: str = 'bert-base-uncased'):
+    def __init__(self, model_name: str = 'distilbert-base-uncased'):
         """
         Initialize BERT model
         

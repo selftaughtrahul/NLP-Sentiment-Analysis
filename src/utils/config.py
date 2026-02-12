@@ -25,10 +25,10 @@ MODELS_DIR.mkdir(parents=True, exist_ok=True)
 # Model settings
 MODEL_CONFIGS = {
     "naive_bayes": {
-        "alpha": 1.0
+        "alpha": 0.1
     },
     "logistic_regression": {
-        "C": 1.0,
+        "C": 2.0,
         "max_iter": 1000,
         "solver": "lbfgs"
     },
@@ -41,20 +41,32 @@ MODEL_CONFIGS = {
         "epochs": 10,
         "learning_rate": 0.001
     },
+    "xgboost": {
+        "n_estimators": 200,
+        "learning_rate": 0.1,
+        "max_depth": 6,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "n_jobs": -1
+    },
+    "ensemble": {
+        "method": "soft",  # Soft voting (probabilities) or hard voting (labels)
+        "weights": None    # Optional weights for each model
+    },
     "bert": {
-        "model_name": "bert-base-uncased",
-        "max_length": 512,
-        "batch_size": 16,
-        "epochs": 3,
+        "model_name": "distilbert-base-uncased",
+        "max_length": 128,
+        "batch_size": 32,  # Reduced for RoBERTa (larger model)
+        "epochs": 4,       # Increased for better convergence
         "learning_rate": 2e-5,
-        "warmup_steps": 500
+        "warmup_steps": 20
     }
 }
 
 # TF-IDF settings
 TFIDF_CONFIG = {
-    "max_features": 5000,
-    "ngram_range": (1, 2),
+    "max_features": 20000,
+    "ngram_range": (1, 3),
     "min_df": 5,
     "max_df": 0.8
 }

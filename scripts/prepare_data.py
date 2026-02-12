@@ -4,7 +4,13 @@ Uses the Twitter Sentiment140 dataset or creates sample data
 """
 import pandas as pd
 import numpy as np
+import sys
 from pathlib import Path
+
+# Add apps directory to sys.path
+apps_dir = Path(__file__).resolve().parent.parent
+sys.path.append(str(apps_dir))
+
 from sklearn.model_selection import train_test_split
 from src.preprocessing.pipeline import PreprocessingPipeline
 from src.utils.config import RAW_DATA_DIR, PROCESSED_DATA_DIR, LABEL_TO_ID
@@ -13,94 +19,35 @@ from src.utils.logger import setup_logger
 logger = setup_logger(__name__)
 
 
-def create_sample_dataset():
-    """
-    Create a sample dataset for testing
-    In production, replace this with actual dataset loading
-    """
-    logger.info("Creating sample dataset...")
-    
-    # Sample data (replace with actual dataset)
-    samples = [
-        # Positive samples
-        ("I absolutely love this product! It's amazing and works perfectly.", 2),
-        ("This is the best purchase I've ever made. Highly recommend!", 2),
-        ("Excellent quality and fast shipping. Very satisfied!", 2),
-        ("Great value for money. Exceeded my expectations!", 2),
-        ("Outstanding service and product. Will buy again!", 2),
-        ("Fantastic! Exactly what I needed. Five stars!", 2),
-        ("Love it! Works great and looks beautiful.", 2),
-        ("Perfect! No complaints at all. Very happy!", 2),
-        ("Wonderful experience. The product is excellent.", 2),
-        ("Amazing quality! Totally worth the price.", 2),
-        
-        # Negative samples
-        ("Terrible product. Complete waste of money.", 0),
-        ("Very disappointed. Does not work as advertised.", 0),
-        ("Worst purchase ever. Broke after one day.", 0),
-        ("Poor quality. Would not recommend to anyone.", 0),
-        ("Horrible experience. Customer service was awful.", 0),
-        ("Don't buy this! It's a scam.", 0),
-        ("Completely useless. Returning immediately.", 0),
-        ("Awful product. Save your money.", 0),
-        ("Terrible quality and overpriced.", 0),
-        ("Worst experience ever. Very unhappy.", 0),
-        
-        # Neutral samples
-        ("It's okay. Nothing special but works fine.", 1),
-        ("Average product. Does what it says.", 1),
-        ("Not bad, not great. Just okay.", 1),
-        ("Decent quality for the price.", 1),
-        ("It works. No major issues.", 1),
-        ("Acceptable. Meets basic expectations.", 1),
-        ("Fair product. Could be better.", 1),
-        ("Standard quality. Nothing remarkable.", 1),
-        ("It's fine. Does the job.", 1),
-        ("Okay product. Average experience.", 1),
-    ]
-    
-    # Expand dataset by creating variations
-    expanded_samples = []
-    for text, label in samples:
-        expanded_samples.append((text, label))
-        # Add slight variations
-        expanded_samples.append((text.lower(), label))
-        expanded_samples.append((text + " Really!", label))
-    
-    # Create more samples to have a reasonable dataset size
-    # In production, you would load a real dataset here
-    for _ in range(100):  # Replicate to get ~300 samples
-        for text, label in samples:
-            expanded_samples.append((text, label))
-    
-    df = pd.DataFrame(expanded_samples, columns=['text', 'label'])
-    
-    # Shuffle
-    df = df.sample(frac=1, random_state=42).reset_index(drop=True)
-    
-    logger.info(f"Created dataset with {len(df)} samples")
-    logger.info(f"Label distribution:\n{df['label'].value_counts()}")
-    
-    return df
-
+from datasets import load_dataset
 
 def download_real_dataset():
     """
     Download a real sentiment analysis dataset
-    Options:
-    1. IMDB Reviews
-    2. Twitter Sentiment140
-    3. Amazon Reviews
-    
-    For now, returns None - implement based on your needs
+    Uses TweetEval (sentiment)
     """
-    # TODO: Implement actual dataset download
-    # Example using datasets library:
-    # from datasets import load_dataset
-    # dataset = load_dataset("imdb")
-    # df = pd.DataFrame(dataset['train'])
+    logger.info("Downloading TweetEval (sentiment) dataset...")
     
-    return None
+    try:
+        # Load dataset
+        dataset = load_dataset("tweet_eval", "sentiment")
+        
+        # Convert to pandas
+        # TweetEval has 'train', 'test', 'validation' splits
+        # We'll combine them and let our split function handle it to ensure consistency with our pipeline
+        train_df = pd.DataFrame(dataset['train'])
+        val_df = pd.DataFrame(dataset['validation'])
+        test_df = pd.DataFrame(dataset['test'])
+        
+        # Combine
+        df = pd.concat([train_df, val_df, test_df], ignore_index=True)
+        
+        logger.info(f"Successfully loaded TweetEval dataset with {len(df)} samples")
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error downloading dataset: {e}")
+        return None
 
 
 def preprocess_dataset(df):
@@ -179,7 +126,7 @@ def main():
     
     if df is None:
         logger.warning("Using sample dataset. For production, implement real dataset download.")
-        df = create_sample_dataset()
+        return
     
     # Preprocess
     df = preprocess_dataset(df)

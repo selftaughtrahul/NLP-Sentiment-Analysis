@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torch.optim import AdamW
-from transformers import BertModel, BertTokenizer, get_linear_schedule_with_warmup
+from transformers import AutoModel, AutoTokenizer, get_linear_schedule_with_warmup
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
@@ -20,7 +20,7 @@ logger = setup_logger(__name__)
 class SentimentDataset(Dataset):
     """Dataset for BERT"""
     
-    def __init__(self, texts, labels, tokenizer, max_length=512):
+    def __init__(self, texts, labels, tokenizer, max_length=128):
         self.texts = texts
         self.labels = labels
         self.tokenizer = tokenizer
@@ -53,9 +53,9 @@ class SentimentDataset(Dataset):
 class BERTSentimentClassifier(nn.Module):
     """BERT-based sentiment classifier"""
     
-    def __init__(self, n_classes=3, dropout=0.3):
+    def __init__(self, model_name, n_classes=3, dropout=0.3):
         super().__init__()
-        self.bert = BertModel.from_pretrained('bert-base-uncased')
+        self.bert = AutoModel.from_pretrained(model_name)
         self.dropout = nn.Dropout(dropout)
         self.classifier = nn.Linear(self.bert.config.hidden_size, n_classes)
     
@@ -65,7 +65,9 @@ class BERTSentimentClassifier(nn.Module):
             attention_mask=attention_mask
         )
         
-        pooled_output = outputs.pooler_output
+        hidden_state = outputs.last_hidden_state
+        pooled_output = hidden_state[:, 0]  # CLS token
+        
         output = self.dropout(pooled_output)
         return self.classifier(output)
 
@@ -73,14 +75,17 @@ class BERTSentimentClassifier(nn.Module):
 class BERTTrainer:
     """Trainer for BERT model"""
     
-    def __init__(self, model_name='bert-base-uncased', n_classes=3):
+    def __init__(self, model_name=None, n_classes=3):
+        self.config = MODEL_CONFIGS['bert']
+        if model_name is None:
+            model_name = self.config.get('model_name', 'distilbert-base-uncased')
+
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.tokenizer = BertTokenizer.from_pretrained(model_name)
-        self.model = BERTSentimentClassifier(n_classes=n_classes)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = BERTSentimentClassifier(model_name=model_name, n_classes=n_classes)
         self.model.to(self.device)
         
-        self.config = MODEL_CONFIGS['bert']
-        logger.info(f"Initialized BERT on {self.device}")
+        logger.info(f"Initialized BERT ({model_name}) on {self.device}")
     
     def train(self, train_texts, train_labels, val_texts=None, val_labels=None):
         """
@@ -151,8 +156,8 @@ class BERTTrainer:
             
             # Validation
             if val_texts is not None:
-                val_acc = self.evaluate(val_texts, val_labels)
-                logger.info(f"Validation accuracy: {val_acc:.4f}")
+                val_results = self.evaluate(val_texts, val_labels)
+                logger.info(f"Validation accuracy: {val_results['accuracy']:.4f}")
     
     def predict(self, texts):
         """Predict sentiment for texts"""
